@@ -20,25 +20,31 @@ const initializeDBandServer = async () => {
     })
   } catch (error) {
     console.log(`Error: ${error.message}`)
+    process.exit(1)
   }
 }
 initializeDBandServer()
 
 //API 1
-app.post('/resgister', async (request, response) => {
+app.post('/register', async (request, response) => {
   const {userName, name, password, gender, location} = request.body
+  console.log(request.body)
   const hashedPassword = await bcrypt.hash(password, 10)
   let checkTheUserName = `
     SELECT 
         * 
     FROM
         user
-    WHERE username = ${userName};`
+    WHERE username = '${userName}';`
   const userData = await db.get(checkTheUserName)
-  if (userData === undefined) {
+  console.log(userData)
+  if (userData !== undefined) {
+    response.status(400)
+    response.send('User already exists')
+  } else {
     if (password.length < 5) {
       response.status(400)
-      response.send("Password is too short")
+      response.send('Password is too short')
     } else {
       const postNewQuery = `
         INSERT INTO 
@@ -54,9 +60,6 @@ app.post('/resgister', async (request, response) => {
       response.status(200)
       response.send('User created successfully')
     }
-  } else {
-    response.status(400)
-    response.send('User already exists')
   }
 })
 //API 2
@@ -69,12 +72,12 @@ app.post('/login', async (request, response) => {
     user
   WHERE username = '${userName}';
   `
-  const dbUSer = await db.get(loginUserRequestQuery)
-  if (dbUSer === undefined) {
+  const dbUser = await db.get(loginUserRequestQuery)
+  if (dbUser === undefined) {
     response.status(400)
     response.send('Invalid user')
   } else {
-    isPasswordMatched = await bcrypt.compare(password, dbUSer.password)
+    isPasswordMatched = await bcrypt.compare(password, dbUser.password)
     if (isPasswordMatched) {
       response.status(200)
       response.send('Login success!')
