@@ -27,7 +27,7 @@ initializeDBandServer()
 
 //API 1
 app.post('/register', async (request, response) => {
-  const {userName, name, password, gender, location} = request.body
+  const {username, name, password, gender, location} = request.body
   console.log(request.body)
   const hashedPassword = await bcrypt.hash(password, 10)
   let checkTheUserName = `
@@ -35,7 +35,7 @@ app.post('/register', async (request, response) => {
         * 
     FROM
         user
-    WHERE username = '${userName}';`
+    WHERE username = '${username}';`
   const userData = await db.get(checkTheUserName)
   console.log(userData)
   if (userData !== undefined) {
@@ -49,7 +49,7 @@ app.post('/register', async (request, response) => {
       const postNewQuery = `
         INSERT INTO 
             user(username, name, password, gender, location)
-        VALUES ('${userName}', 
+        VALUES ('${username}', 
                 '${name}', 
                 '${hashedPassword}',
                 '${gender}',
@@ -64,15 +64,17 @@ app.post('/register', async (request, response) => {
 })
 //API 2
 app.post('/login', async (request, response) => {
-  const {userName, password} = request.body
+  const {username, password} = request.body
+  console.log(request.body)
   const loginUserRequestQuery = ` 
   SELECT 
     * 
   FROM 
     user
-  WHERE username = '${userName}';
+  WHERE username = '${username}';
   `
   const dbUser = await db.get(loginUserRequestQuery)
+  console.log(dbUser)
   if (dbUser === undefined) {
     response.status(400)
     response.send('Invalid user')
@@ -90,20 +92,24 @@ app.post('/login', async (request, response) => {
 
 //API 3
 app.put('/change-password', async (request, response) => {
-  const {userName, oldPassword, newPassword} = request.body
+  const {username, oldPassword, newPassword} = request.body
+  console.log(request.body)
   const checkUserPasswordQuery = `
   SELECT 
     *
   FROM 
     user
   WHERE
-    username = '${userName}';
+    username = '${username}';
   `
   const dbUser = await db.get(checkUserPasswordQuery)
-  if (dbUser.password === oldPassword) {
-    response.status(400)
-    response.send('Invalid current passsword')
-  } else {
+  console.log(dbUser)
+  const isOldPasswordMatched = await bcrypt.compare(
+    oldPassword,
+    dbUser.password,
+  )
+  console.log(isOldPasswordMatched)
+  if (isOldPasswordMatched) {
     if (newPassword.length < 5) {
       response.status(400)
       response.send('Password is too short')
@@ -115,12 +121,15 @@ app.put('/change-password', async (request, response) => {
       SET
         password = '${newHashedPassword}'
       WHERE
-        username = '${dbUSer.username}';
+        username = '${dbUser.username}';
       `
       await db.run(updatePasswordUserQuery)
       response.status(200)
       response.send('Password updated')
     }
+  } else {
+    response.status(400)
+    response.send('Invalid current password')
   }
 })
 
